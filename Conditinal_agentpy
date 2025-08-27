@@ -1,0 +1,78 @@
+from langgraph.graph import StateGraph, START, END
+
+# Define the state
+class AgentState(dict):
+    number1: int
+    number2: int
+    number3: int
+    number4: int
+    operation: str
+    operation2: str
+    finalNumber: int
+    finalNumber2: int
+
+# --- Node functions ---
+def add_node(state: AgentState):
+    state["finalNumber"] = state["number1"] + state["number2"]
+    return state
+
+def subtract_node(state: AgentState):
+    state["finalNumber"] = state["number1"] - state["number2"]
+    return state
+
+def add_node2(state: AgentState):
+    state["finalNumber2"] = state["number3"] + state["number4"]
+    return state
+
+def subtract_node2(state: AgentState):
+    state["finalNumber2"] = state["number3"] - state["number4"]
+    return state
+
+# --- Routers with conditional edges ---
+def router(state: AgentState):
+    return "addition_operation" if state["operation"] == "+" else "subtraction_operation"
+
+def router2(state: AgentState):
+    return "addition_operation2" if state["operation2"] == "+" else "subtraction_operation2"
+
+# --- Build graph ---
+workflow = StateGraph(AgentState)
+
+workflow.add_node("add_node", add_node)
+workflow.add_node("subtract_node", subtract_node)
+workflow.add_node("add_node2", add_node2)
+workflow.add_node("subtract_node2", subtract_node2)
+
+workflow.add_conditional_edges(START, router, {
+    "addition_operation": "add_node",
+    "subtraction_operation": "subtract_node"
+})
+
+workflow.add_conditional_edges("add_node", router2, {
+    "addition_operation2": "add_node2",
+    "subtraction_operation2": "subtract_node2"
+})
+workflow.add_conditional_edges("subtract_node", router2, {
+    "addition_operation2": "add_node2",
+    "subtraction_operation2": "subtract_node2"
+})
+
+workflow.add_edge("add_node2", END)
+workflow.add_edge("subtract_node2", END)
+
+app = workflow.compile()
+
+# --- Run ---
+initial_state = {
+    "number1": 10,
+    "number2": 5,
+    "number3": 7,
+    "number4": 2,
+    "operation": "-",
+    "operation2": "+",
+    "finalNumber": 0,
+    "finalNumber2": 0
+}
+
+output = app.invoke(initial_state)
+print(output)
